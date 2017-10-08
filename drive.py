@@ -32,6 +32,31 @@ prev_image_array = None
 throttle = float(0.15)
 
 
+class SimplePIController:
+    def __init__(self, Kp, Ki):
+        self.Kp = Kp
+        self.Ki = Ki
+        self.set_point = 0.
+        self.error = 0.
+        self.integral = 0.
+
+    def set_desired(self, desired):
+        self.set_point = desired
+
+    def update(self, measurement):
+        # proportional error
+        self.error = self.set_point - measurement
+
+        # integral error
+        self.integral += self.error
+
+        return self.Kp * self.error + self.Ki * self.integral
+
+controller = SimplePIController(0.1, 0.002)
+set_speed = 5
+controller.set_desired(set_speed)
+
+
 @sio.on('telemetry')
 def telemetry(sid, data):
 	global throttle
@@ -57,26 +82,9 @@ def telemetry(sid, data):
 	# throttle = 0.15
 	# adaptive speed
 
-	if (float(speed) > 14):
-		throttle -= float(0.02)
-
-	if (float(speed) < 8):
-		throttle += float(0.01)
-
-	'''
-	else:
-		# When speed is below 20 then increase throttle by speed_factor
-		if ((float(speed)) < 10):
-			speed_factor = 1.35
-		else:
-			speed_factor = 1.0 
-		if (abs(steering_angle) < 0.1): 
-			throttle = 0.2 * speed_factor
-		elif (abs(steering_angle) < 0.5):
-			throttle = 0.15 * speed_factor
-		else:
-			throttle = 0.15 * speed_factor
-	'''
+	throttle = controller.update(float(speed))
+	if (throttle < float(0.0)):
+		throttle = 0.0
 
 	print('Steering angle =', '%5.2f' % (float(steering_angle)), 'Throttle =', '%.2f' % (float(throttle)), 'Speed  =',
 		  '%.2f' % (float(speed)))
